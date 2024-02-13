@@ -1,21 +1,23 @@
-﻿
-
+﻿using System.Net.Http;
 using System.Text.Json;
-using System.Text.Json.Nodes;
+using EmployeeData.Models;
+using Microsoft.Maui.Controls;
 
 namespace EmployeeData
 {
     public partial class MainPage : ContentPage
     {
-        int count = 0;
-        private List<Data> ?lst;
+        private List<Data>? lst;
         private const string api_url = "https://dummy.restapiexample.com/api/v1/employees";
-       
+        public int id;
+        public string name;
+        public int salary;
+        public int age;
+
         public MainPage()
         {
             InitializeComponent();
             FetchAndDisplayData();
-            
         }
 
         private async void FetchAndDisplayData()
@@ -25,54 +27,55 @@ namespace EmployeeData
                 using (HttpClient client = new HttpClient())
                 {
                     HttpResponseMessage response = await client.GetAsync(api_url);
-                    if(response.IsSuccessStatusCode)
+
+                    if (response.IsSuccessStatusCode)
                     {
                         string json = await response.Content.ReadAsStringAsync();
-                        if (json != null)
+                        
+
+                        try
                         {
-                            RootObject ?result = JsonSerializer.Deserialize<RootObject>(json);
-                            if (result != null)
+                            RootObject? result = JsonSerializer.Deserialize<RootObject>(json);
+
+                            if (result != null && result.data != null)
                             {
-                                
-                                string name = lst.FirstOrDefault()?.employee_name!;
-                               
-                                employeeListView.ItemsSource = result!.data;
-                                
+                                lst = result.data;
+                                employeeListView.ItemsSource = lst;
                             }
+                            else
+                            {
+                                await DisplayAlert("Error", "Failed to deserialize data", "OK");
+                            }
+                        }
+                        catch (JsonException ex)
+                        {
+                            Console.WriteLine($"Exception occurred during deserialization: {ex}");
+                            await DisplayAlert("Error", "Failed to deserialize data", "OK");
                         }
                     }
                     else
                     {
                         await DisplayAlert("Error", "Failed to fetch data", "OK");
                     }
-                  
                 }
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
+                Console.WriteLine($"Exception occurred: {ex}");
                 await DisplayAlert("Error", $"{ex.Message}", "OK");
             }
-            
         }
 
-      
+        private async void employeeListView_ItemSelected(object sender, SelectedItemChangedEventArgs e)
+        {
+            if(e.SelectedItem != null && e.SelectedItem is Data SelectedItem)
+            {
+                id = SelectedItem.id;
+                name = SelectedItem.employee_name;
+                salary = SelectedItem.employee_salary;
+                age = SelectedItem.employee_age;
+            }
+            await Navigation.PushAsync(new DetailsPage(id,name,salary,age));
+        }
     }
-   
 }
-    public class Data
-    {
-        public int id { get; set; }
-        public string employee_name { get; set; }
-        public int employee_salary { get; set; }
-        public int employee_age { get; set; }
-        public string profile_image { get; set; }
-    }
-
-    public class RootObject
-    {
-        public string status { get; set; }
-        public List<Data> data { get; set; }
-        public string message { get; set; }
-    }
-
-
